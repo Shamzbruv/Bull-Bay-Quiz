@@ -5,8 +5,10 @@ import { useSettingsStore } from '../state/settingsStore';
 /**
  * Host-window keyboard shortcuts (spec §16) plus the buzzer keys (spec §15)
  * for running a two-team buzzer round from a single shared keyboard.
- * SPACE = pause/resume · C = correct · X = incorrect · N = next · R = reset
- * buzzers · team buzzer keys default to Q / P / Z / M.
+ * SPACE = pause/resume timer · R = reveal answer (while locked) / reset
+ * buzzers (while buzzers are open) · C = correct · X = incorrect (once the
+ * answer is revealed and still ungraded) · N = next · team buzzer keys
+ * default to Q / P / Z / M.
  */
 export function useHostKeyboardShortcuts() {
   const buzzerKeys = useSettingsStore((s) => s.buzzerKeys);
@@ -45,13 +47,14 @@ export function useHostKeyboardShortcuts() {
           break;
         }
         case 'c':
-          if (game.phase === 'locked') store.markCorrect();
+          if (game.phase === 'reveal' && !game.lastAwardedPoints) store.markCorrect();
           break;
         case 'x':
-          if (game.phase === 'locked') store.markIncorrect();
+          if (game.phase === 'reveal' && !game.lastAwardedPoints) store.markIncorrect();
           break;
         case 'r':
-          if (game.phase === 'answering') store.resetBuzzers();
+          if (game.phase === 'locked') store.revealAnswer();
+          else if (game.phase === 'answering') store.resetBuzzers();
           break;
         case 'n':
           switch (game.phase) {

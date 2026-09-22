@@ -23,7 +23,7 @@ export function getActiveTeamId(game: GameState): string | undefined {
 
   if (game.settings.gameMode === 'rapid_fire') {
     const total = Math.max(game.questionOrder.length, 1);
-    const perTeam = Math.max(Math.ceil(total / teams.length), 1);
+    const perTeam = Math.max(game.settings.questionsPerTeam || Math.ceil(total / teams.length), 1);
     const teamPos = Math.min(Math.floor(game.questionIndex / perTeam), teams.length - 1);
     return teamAtOrder(teams, teamPos)?.id;
   }

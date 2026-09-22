@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Home } from './routes/Home';
 import { PlaySetup } from './routes/PlaySetup';
 import { GameHost } from './routes/GameHost';
-import { GamePresenter } from './routes/GamePresenter';
+import { GameDisplay } from './routes/GameDisplay';
+import { PhoneBuzzer } from './routes/PhoneBuzzer';
 import { QuizLibrary } from './routes/QuizLibrary';
 import { QuizDetail } from './routes/QuizDetail';
 import { AdminDashboard } from './routes/AdminDashboard';
@@ -23,7 +24,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/play/setup" element={<PlaySetup />} />
         <Route path="/game/:gameId" element={<GameHost />} />
-        <Route path="/game/:gameId/presenter" element={<GamePresenter />} />
+        <Route path="/game/:gameId/display" element={<GameDisplay />} />
+        <Route path="/game/:gameId/buzzer" element={<PhoneBuzzer />} />
         <Route path="/quizzes" element={<QuizLibrary />} />
         <Route path="/quizzes/:quizId" element={<QuizDetail />} />
         <Route path="/admin" element={<AdminDashboard />} />

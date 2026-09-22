@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { brand } from '../config/brand';
 
-const CRITICAL_ASSETS = [brand.logo, brand.icon, brand.backgrounds.game, brand.backgrounds.hero];
+const CRITICAL_ASSETS = [brand.logo, brand.icon];
 
 function preloadImage(src: string): Promise<void> {
   return new Promise((resolve) => {

@@ -31,6 +31,8 @@ export interface GameSettings {
   stealEnabled: boolean;
   stealTimeSeconds: number;
   leaderboardEveryQuestions: number;
+  /** Classic/Rapid Fire only — overrides the automatic even split when set. */
+  questionsPerTeam?: number;
 }
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
@@ -107,6 +109,12 @@ export interface GameState {
   winnerTeamId?: string;
 
   questionsAnsweredSinceBreak: number;
+
+  /** How many questions each team has actually had graded — used for the "End Early" balancer. */
+  questionsAnsweredByTeam: Record<string, number>;
+  /** Host has asked to wrap up as soon as every team reaches balanceTargetCount. */
+  balancingToEnd: boolean;
+  balanceTargetCount?: number;
 }
 
 export interface GameHistoryEntry {

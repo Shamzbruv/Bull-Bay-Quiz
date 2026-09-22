@@ -26,10 +26,12 @@ interface GameStore {
 
   buzzIn: (teamId: string) => void;
   selectAnswer: (answer: string) => void;
+  revealAnswer: () => void;
   markCorrect: () => void;
   markIncorrect: () => void;
   skipQuestion: () => void;
   resetBuzzers: () => void;
+  startBalancingEnd: () => void;
 
   continueAfterReveal: () => void;
   continueFromLeaderboard: () => void;
@@ -90,6 +92,8 @@ export const useGameStore = create<GameStore>()(
           tieBreakerActive: false,
           startedAt: new Date().toISOString(),
           questionsAnsweredSinceBreak: 0,
+          questionsAnsweredByTeam: Object.fromEntries(teams.map((t) => [t.id, 0])),
+          balancingToEnd: false,
         };
         set({ game });
       },
@@ -161,6 +165,7 @@ export const useGameStore = create<GameStore>()(
           game: {
             ...game,
             buzzedTeamId: teamId,
+            lockedAnswer: undefined,
             phase: 'locked',
             timerRunning: false,
           },
@@ -173,9 +178,31 @@ export const useGameStore = create<GameStore>()(
         set({ game: { ...game, lockedAnswer: answer } });
       },
 
+      revealAnswer: () => {
+        const game = get().game;
+        if (!game || game.phase !== 'locked') return;
+        const q = getCurrentQuestion(game);
+        if (!q) return;
+
+        if (q.type === 'multiple_choice') {
+          // The system already knows the right answer — no need for the host to judge it too.
+          if (!game.lockedAnswer) return; // host must tap which option the team gave first
+          if (game.lockedAnswer === q.correctAnswer) {
+            get().markCorrect();
+          } else {
+            get().markIncorrect();
+          }
+          return;
+        }
+
+        // Short answer / who-am-I / etc: reveal the answer first, host judges what they heard next.
+        set({ game: { ...game, phase: 'reveal', timerRunning: false, lastAwardedPoints: undefined } });
+      },
+
       markCorrect: () => {
         const game = get().game;
         if (!game) return;
+        if (!(game.phase === 'locked' || (game.phase === 'reveal' && !game.lastAwardedPoints))) return;
         const q = getCurrentQuestion(game);
         if (!q) return;
         const teamId = game.buzzedTeamId ?? game.activeTeamId;
@@ -192,6 +219,7 @@ export const useGameStore = create<GameStore>()(
             timerRunning: false,
             lastAwardedPoints: { teamId, points, correct: true },
             winnerTeamId: game.tieBreakerActive ? teamId : game.winnerTeamId,
+            questionsAnsweredByTeam: tallyAttempt(game, teamId),
           },
         });
       },
@@ -199,9 +227,12 @@ export const useGameStore = create<GameStore>()(
       markIncorrect: () => {
         const game = get().game;
         if (!game) return;
+        if (!(game.phase === 'locked' || (game.phase === 'reveal' && !game.lastAwardedPoints))) return;
+        const preReveal = game.phase === 'locked';
         const teamId = game.buzzedTeamId ?? game.activeTeamId;
         const penalty = game.settings.penaltiesEnabled && teamId ? pointsForQuestionSafe(game) : 0;
         const scores = penalty && teamId ? { ...game.scores, [teamId]: (game.scores[teamId] ?? 0) - penalty } : game.scores;
+        const questionsAnsweredByTeam = teamId ? tallyAttempt(game, teamId) : game.questionsAnsweredByTeam;
 
         const attemptedQueue = teamId ? [...game.buzzQueue, { teamId, timestamp: Date.now() }] : game.buzzQueue;
 
@@ -209,15 +240,19 @@ export const useGameStore = create<GameStore>()(
           ? (game.tiedTeamIds ?? []).filter((id) => !attemptedQueue.some((b) => b.teamId === id))
           : game.teams.filter((t) => !attemptedQueue.some((b) => b.teamId === t.id)).map((t) => t.id);
 
-        const canSteal = !isTurnBasedMode(game.settings.gameMode) && (game.tieBreakerActive || game.settings.stealEnabled) && contenders.length > 0;
+        // Stealing only makes sense before the answer has been shown — once it's revealed
+        // (the non-multiple-choice path), everyone already knows it, so no more steals.
+        const canSteal = preReveal && !isTurnBasedMode(game.settings.gameMode) && (game.tieBreakerActive || game.settings.stealEnabled) && contenders.length > 0;
 
         if (canSteal) {
           set({
             game: {
               ...game,
               scores,
+              questionsAnsweredByTeam,
               buzzQueue: attemptedQueue,
               buzzedTeamId: undefined,
+              lockedAnswer: undefined,
               phase: 'answering',
               timerKind: 'steal',
               timerRemaining: game.settings.stealTimeSeconds,
@@ -228,7 +263,7 @@ export const useGameStore = create<GameStore>()(
           return;
         }
 
-        if (game.tieBreakerActive) {
+        if (game.tieBreakerActive && preReveal) {
           // Everyone tied whiffed this tie-break question — move to the next one, or call it a draw.
           const [nextId, ...rest] = game.tieBreakerQueue;
           if (nextId) {
@@ -236,6 +271,7 @@ export const useGameStore = create<GameStore>()(
               game: {
                 ...game,
                 scores,
+                questionsAnsweredByTeam,
                 buzzQueue: [],
                 buzzedTeamId: undefined,
                 currentTieBreakerId: nextId,
@@ -253,6 +289,7 @@ export const useGameStore = create<GameStore>()(
           game: {
             ...game,
             scores,
+            questionsAnsweredByTeam,
             phase: 'reveal',
             timerRunning: false,
             lastAwardedPoints: teamId ? { teamId, points: penalty, correct: false } : undefined,
@@ -293,8 +330,12 @@ export const useGameStore = create<GameStore>()(
 
         const questionsAnsweredSinceBreak = game.questionsAnsweredSinceBreak + 1;
         const isLastQuestion = game.questionIndex >= game.questionOrder.length - 1;
+        const balanced =
+          game.balancingToEnd &&
+          game.balanceTargetCount !== undefined &&
+          game.teams.every((t) => (game.questionsAnsweredByTeam[t.id] ?? 0) >= game.balanceTargetCount!);
 
-        if (isLastQuestion) {
+        if (isLastQuestion || balanced) {
           const result = determineWinner(game.teams, game.scores);
           if (!result.tied) {
             finish(get, set, { winnerTeamId: result.winnerTeamId });
@@ -389,6 +430,13 @@ export const useGameStore = create<GameStore>()(
         finish(get, set, { winnerTeamId: result.winnerTeamId, tiedTeamIds: result.tiedTeamIds });
       },
 
+      startBalancingEnd: () => {
+        const game = get().game;
+        if (!game) return;
+        const target = Math.max(0, ...game.teams.map((t) => game.questionsAnsweredByTeam[t.id] ?? 0));
+        set({ game: { ...game, balancingToEnd: true, balanceTargetCount: target } });
+      },
+
       previousQuestion: () => {
         const game = get().game;
         if (!game || game.tieBreakerActive || game.questionIndex === 0) return;
@@ -413,6 +461,10 @@ export const useGameStore = create<GameStore>()(
 function pointsForQuestionSafe(game: GameState): number {
   const q = getCurrentQuestion(game);
   return q ? pointsForQuestion(q, game.settings) : 0;
+}
+
+function tallyAttempt(game: GameState, teamId: string): Record<string, number> {
+  return { ...game.questionsAnsweredByTeam, [teamId]: (game.questionsAnsweredByTeam[teamId] ?? 0) + 1 };
 }
 
 function finish(get: () => GameStore, set: (partial: Partial<GameStore>) => void, result: { winnerTeamId?: string; tiedTeamIds?: string[] }) {

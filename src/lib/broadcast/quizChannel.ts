@@ -6,6 +6,7 @@ export type QuizChannelMessage =
   | { type: 'STATE_SYNC'; payload: PresenterGameState }
   | { type: 'BUZZ_ATTEMPT'; payload: { teamId: string; timestamp: number } }
   | { type: 'PRESENTER_READY' }
+  | { type: 'DISPLAY_SCALE'; payload: { scale: number } }
   | { type: 'HOST_PING' };
 
 /**

@@ -4,6 +4,7 @@ import { useGameStore } from '../state/gameStore';
 import { useGameTimer } from '../hooks/useGameTimer';
 import { useHostBroadcast } from '../hooks/useHostBroadcast';
 import { useHostKeyboardShortcuts } from '../hooks/useHostKeyboardShortcuts';
+import { useBuzzerRelay } from '../hooks/useBuzzerRelay';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { BackgroundScene } from '../components/brand/BackgroundScene';
 import { PreGameScreen } from '../components/game/PreGameScreen';
@@ -15,6 +16,8 @@ import { TieAnnouncement } from '../components/game/TieAnnouncement';
 import { SuddenDeathIntro } from '../components/game/SuddenDeathIntro';
 import { WinnerScreen } from '../components/game/WinnerScreen';
 import { HostControls } from '../components/game/HostControls';
+import { DisplayScaleControl } from '../components/game/DisplayScaleControl';
+import { QrBuzzerPanel } from '../components/game/QrBuzzerPanel';
 import { ChurchLogo } from '../components/brand/ChurchLogo';
 
 export function GameHost() {
@@ -25,6 +28,7 @@ export function GameHost() {
   useGameTimer();
   useHostBroadcast();
   useHostKeyboardShortcuts();
+  useBuzzerRelay();
 
   if (!game || game.id !== gameId) {
     return (
@@ -43,13 +47,15 @@ export function GameHost() {
 
   return (
     <BackgroundScene variant="dark">
-      <div className="absolute top-4 right-4 z-40 flex gap-2">
+      <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
+        <DisplayScaleControl />
+        <QrBuzzerPanel gameId={game.id} />
         <a
-          href={`/game/${game.id}/presenter`}
+          href={`/game/${game.id}/display`}
           target="_blank"
           rel="noreferrer"
           className="h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center backdrop-blur"
-          title="Open Presentation Window"
+          title="Open Audience Display in a new tab (this stays your control screen)"
         >
           <MonitorPlay size={18} />
         </a>

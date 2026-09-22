@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePresenterState } from '../hooks/usePresenterState';
 import { useSettingsStore } from '../state/settingsStore';
+import { quizChannel } from '../lib/broadcast/quizChannel';
 import { BackgroundScene } from '../components/brand/BackgroundScene';
 import { ChurchLogo } from '../components/brand/ChurchLogo';
 import { BrandDivider } from '../components/brand/BrandDivider';
@@ -17,9 +18,33 @@ import { AnimatedCounter } from '../components/game/AnimatedCounter';
 import { computeStandings } from '../lib/game/scoring';
 import { brand } from '../config/brand';
 
-export function GamePresenter() {
+/**
+ * The audience-facing screen — what gets projected on the church TV. Opened
+ * in a separate tab/window from the Host console (see GameHost's "Open
+ * Audience Display" button); this page is purely a read-only mirror driven
+ * over BroadcastChannel, with no controls of its own.
+ */
+export function GameDisplay() {
   const { state, buzz } = usePresenterState();
   const buzzerKeys = useSettingsStore((s) => s.buzzerKeys);
+
+  // Root font-size scaling: Tailwind's rem-based sizing means changing the
+  // <html> font-size proportionally scales every text/spacing utility at
+  // once, so the host can make the whole display bigger without us having
+  // to hand-scale every element individually.
+  const [scalePct, setScalePct] = useState(100);
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${scalePct}%`;
+    return () => {
+      document.documentElement.style.fontSize = '';
+    };
+  }, [scalePct]);
+
+  useEffect(() => {
+    return quizChannel.subscribe((message) => {
+      if (message.type === 'DISPLAY_SCALE') setScalePct(message.payload.scale);
+    });
+  }, []);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -117,7 +142,13 @@ export function GamePresenter() {
               {q.type === 'multiple_choice' && q.options && (
                 <div className="grid sm:grid-cols-2 gap-4">
                   {q.options.map((opt) => (
-                    <Choice key={opt.id} label={opt.id} text={opt.text} disabled />
+                    <Choice
+                      key={opt.id}
+                      label={opt.id}
+                      text={opt.text}
+                      disabled
+                      selected={state.phase === 'locked' && state.lockedAnswer === opt.id}
+                    />
                   ))}
                 </div>
               )}

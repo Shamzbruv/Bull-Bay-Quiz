@@ -99,6 +99,21 @@ export function SettingsStep({ settings, onChange }: SettingsStepProps) {
         </div>
       </Section>
 
+      {settings.gameMode === 'rapid_fire' && (
+        <Section title="Questions Per Team" subtitle="Leave on Auto to split the quiz evenly across your teams">
+          <div className="flex flex-wrap gap-2 justify-center">
+            <Pill active={!settings.questionsPerTeam} onClick={() => patch({ questionsPerTeam: undefined })}>
+              Auto (even split)
+            </Pill>
+            {[5, 10, 15, 20].map((n) => (
+              <Pill key={n} active={settings.questionsPerTeam === n} onClick={() => patch({ questionsPerTeam: n })}>
+                {n} each
+              </Pill>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {(settings.gameMode === 'buzzer' || settings.gameMode === 'elimination') && (
         <Section title="Steal Rule">
           <div className="flex flex-wrap gap-2 justify-center items-center">
