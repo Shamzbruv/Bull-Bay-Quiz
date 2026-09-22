@@ -100,8 +100,14 @@ Built to be genuinely playable today rather than a full re-implementation of
 every line of the original spec. In particular:
 
 - **Auth** is a local PIN gate, not Supabase Auth roles (admin / quizmaster /
-  viewer). The schema for that (`supabase/migrations/0003_roles_and_rls.sql`)
-  is ready for a future pass once a real Supabase project exists.
+  viewer). Because of that, the RLS policies in
+  `supabase/migrations/0003_roles_and_rls.sql` intentionally leave the
+  `quizzes`/`questions`/`game_sessions`/`game_teams` tables open to anyone
+  holding the anon key — a policy gated on `auth.uid()` would silently block
+  every write, since the app never establishes a Supabase session. The PIN
+  screen is what's actually keeping the quiz builder private, not RLS. The
+  `profiles` table is scaffolded and ready to tighten this once real
+  Supabase Auth logins exist.
 - **Sound effects** are synthesized with the Web Audio API
   (`src/lib/sound/soundManager.ts`) rather than produced recordings — no
   audio files to manage, but not studio-quality. Swap in real files by

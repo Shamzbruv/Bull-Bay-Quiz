@@ -1,10 +1,16 @@
 -- Roles + row-level security (spec §47).
--- Not wired to the app yet (Phase 1 ships with a local host-PIN gate
--- instead — see src/lib/auth). This migration exists so a future Supabase
--- Auth pass has the schema ready to build on: admin/quizmaster/viewer
--- profiles keyed to auth.users, with RLS restricting quiz writes to
--- admin/quizmaster and leaving read access open (a presentation screen has
--- no logged-in user).
+--
+-- The app's real access control right now is the local host-PIN gate (see
+-- src/lib/auth) — there is no Supabase Auth login flow, so every request
+-- from the browser is anonymous. That means policies gated on auth.uid()
+-- would silently block every write (creating quizzes, saving game history)
+-- the moment RLS is turned on. Until a real Supabase Auth pass wires up
+-- admin/quizmaster/viewer logins, the tables below stay open for read AND
+-- write to anyone holding the anon key — the PIN screen is what's actually
+-- keeping the quiz builder off the public internet, not RLS.
+--
+-- The `profiles` table is created now so a future auth pass has somewhere
+-- to land without another migration; it's unused by the app today.
 
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -24,14 +30,12 @@ create policy "Questions are publicly readable" on questions for select using (t
 create policy "Game sessions are publicly readable" on game_sessions for select using (true);
 create policy "Game teams are publicly readable" on game_teams for select using (true);
 
-create policy "Admins and quizmasters manage quizzes" on quizzes for all using (
-  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'quizmaster'))
-);
-create policy "Admins and quizmasters manage questions" on questions for all using (
-  exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role in ('admin', 'quizmaster'))
-);
-create policy "Signed-in users record game sessions" on game_sessions for insert with check (auth.uid() is not null);
-create policy "Signed-in users record game teams" on game_teams for insert with check (auth.uid() is not null);
+-- Open write access — see note above. Tighten these to check profiles.role
+-- once real Supabase Auth logins exist.
+create policy "Anyone can manage quizzes" on quizzes for all using (true) with check (true);
+create policy "Anyone can manage questions" on questions for all using (true) with check (true);
+create policy "Anyone can record game sessions" on game_sessions for all using (true) with check (true);
+create policy "Anyone can record game teams" on game_teams for all using (true) with check (true);
 
 create policy "Users read their own profile" on profiles for select using (auth.uid() = id);
 create policy "Admins read all profiles" on profiles for select using (
