@@ -124,10 +124,10 @@ export function GameDisplay() {
             <div className="w-full max-w-4xl rounded-[2rem] border border-white/10 bg-bb-navy/80 backdrop-blur-xl shadow-2xl p-6 sm:p-10 space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <DifficultyBadge difficulty={q.difficulty} points={q.points} />
-                {state.timerRunning || state.timerRemaining > 0 ? (
-                  <QuestionTimer remaining={state.timerRemaining} total={timerTotal} running={state.timerRunning} />
-                ) : (
+                {state.timerKind === 'answer' && state.settings.answerTimeSeconds === 'unlimited' ? (
                   <span className="text-sm text-white/50 uppercase tracking-widest">Unlimited</span>
+                ) : (
+                  <QuestionTimer remaining={state.timerRemaining} total={timerTotal} running={state.timerRunning} />
                 )}
               </div>
 

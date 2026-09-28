@@ -514,7 +514,9 @@ function onTimerExpired(get: () => GameStore, set: (partial: Partial<GameStore>)
   }
 
   if (game.timerKind === 'answer' || game.timerKind === 'steal') {
-    // Nobody buzzed in time.
-    set({ game: { ...game, phase: 'reveal', timerRunning: false, lastAwardedPoints: undefined } });
+    // Nobody buzzed in time — freeze the clock at zero and hold here. The
+    // host still has to press REVEAL to show the answer; auto-revealing the
+    // moment time runs out would kill the suspense of a dramatic pause.
+    set({ game: { ...game, timerRemaining: 0, timerRunning: false } });
   }
 }
