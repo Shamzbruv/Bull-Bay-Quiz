@@ -1,108 +1,13 @@
 import type { Quiz, QuizQuestion } from '../../types/quiz';
+import { makeQuestionHelpers } from './helpers';
 
 const QUIZ_ID = '1-kings-chapter-1';
+const SCORED_QUESTION_COUNT = 64;
 
-function mc(
-  n: number,
-  question: string,
-  options: [string, string, string, string],
-  correct: 'A' | 'B' | 'C' | 'D',
-  explanation: string,
-  scriptureReference: string,
-): QuizQuestion {
-  return {
-    id: `1kings1-q${n}`,
-    quizId: QUIZ_ID,
-    round: 'Round 1 — Multiple Choice',
-    questionNumber: n,
-    type: 'multiple_choice',
-    question,
-    options: [
-      { id: 'A', text: options[0] },
-      { id: 'B', text: options[1] },
-      { id: 'C', text: options[2] },
-      { id: 'D', text: options[3] },
-    ],
-    correctAnswer: correct,
-    explanation,
-    scriptureReference,
-    difficulty: 'easy',
-    points: 1,
-    timeLimit: 15,
-  };
-}
+const { mc, sa, whoAmI, tieBreaker: tb } = makeQuestionHelpers(QUIZ_ID, '1kings1');
 
-function sa(
-  n: number,
-  round: string,
-  difficulty: QuizQuestion['difficulty'],
-  points: number,
-  question: string,
-  correctAnswer: string,
-  explanation: string,
-  scriptureReference: string,
-  timeLimit = 20,
-): QuizQuestion {
-  return {
-    id: `1kings1-q${n}`,
-    quizId: QUIZ_ID,
-    round,
-    questionNumber: n,
-    type: 'short_answer',
-    question,
-    correctAnswer,
-    explanation,
-    scriptureReference,
-    difficulty,
-    points,
-    timeLimit,
-  };
-}
-
-function whoAmI(
-  n: number,
-  question: string,
-  correctAnswer: string,
-  explanation: string,
-  scriptureReference: string,
-): QuizQuestion {
-  return {
-    id: `1kings1-q${n}`,
-    quizId: QUIZ_ID,
-    round: 'Round 7 — Who Am I?',
-    questionNumber: n,
-    type: 'who_am_i',
-    question,
-    correctAnswer,
-    explanation,
-    scriptureReference,
-    difficulty: 'hard',
-    points: 3,
-    timeLimit: 20,
-  };
-}
-
-function tieBreaker(
-  n: number,
-  question: string,
-  correctAnswer: string,
-  explanation: string,
-  scriptureReference: string,
-): QuizQuestion {
-  return {
-    id: `1kings1-tb${n}`,
-    quizId: QUIZ_ID,
-    round: 'Tie-Breakers',
-    questionNumber: 64 + n,
-    type: 'tie_breaker',
-    question,
-    correctAnswer,
-    explanation,
-    scriptureReference,
-    difficulty: 'expert',
-    points: 0,
-    timeLimit: 20,
-  };
+function tieBreaker(n: number, question: string, correctAnswer: string, explanation: string, scriptureReference: string): QuizQuestion {
+  return tb(n, SCORED_QUESTION_COUNT, question, correctAnswer, explanation, scriptureReference);
 }
 
 const round1MultipleChoice: QuizQuestion[] = [

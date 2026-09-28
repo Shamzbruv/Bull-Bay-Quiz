@@ -2,6 +2,9 @@ import type { Quiz } from '../../types/quiz';
 import type { GameHistoryEntry } from '../../types/game';
 import type { DataAdapter } from './repository';
 import { quiz1Kings1 } from '../../data/seed/1-kings-chapter-1';
+import { quiz1Kings2 } from '../../data/seed/1-kings-chapter-2';
+
+const BUILT_IN_QUIZZES = [quiz1Kings1, quiz1Kings2];
 
 const QUIZZES_KEY = 'bbntcog-quizzes';
 const HISTORY_KEY = 'bbntcog-game-history';
@@ -27,10 +30,20 @@ function writeJson<T>(key: string, value: T): void {
 
 function ensureSeeded(): Quiz[] {
   const existing = readJson<Quiz[] | null>(QUIZZES_KEY, null);
-  if (existing && existing.length > 0) return existing;
-  const seeded = [quiz1Kings1];
-  writeJson(QUIZZES_KEY, seeded);
-  return seeded;
+  if (!existing || existing.length === 0) {
+    writeJson(QUIZZES_KEY, BUILT_IN_QUIZZES);
+    return BUILT_IN_QUIZZES;
+  }
+  // A previously-seeded browser won't have newer built-ins yet (e.g. a quiz
+  // added after they first opened the app) — top those up without touching
+  // anything the host has already edited or played.
+  const missing = BUILT_IN_QUIZZES.filter((q) => !existing.some((e) => e.id === q.id));
+  if (missing.length > 0) {
+    const merged = [...existing, ...missing];
+    writeJson(QUIZZES_KEY, merged);
+    return merged;
+  }
+  return existing;
 }
 
 export class LocalStorageAdapter implements DataAdapter {
