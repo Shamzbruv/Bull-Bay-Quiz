@@ -180,23 +180,31 @@ export const useGameStore = create<GameStore>()(
 
       revealAnswer: () => {
         const game = get().game;
-        if (!game || game.phase !== 'locked') return;
+        if (!game || !['question', 'answering', 'locked'].includes(game.phase)) return;
         const q = getCurrentQuestion(game);
         if (!q) return;
 
-        if (q.type === 'multiple_choice') {
-          // The system already knows the right answer — no need for the host to judge it too.
-          if (!game.lockedAnswer) return; // host must tap which option the team gave first
-          if (game.lockedAnswer === q.correctAnswer) {
-            get().markCorrect();
-          } else {
-            get().markIncorrect();
+        if (game.phase === 'locked') {
+          if (q.type === 'multiple_choice') {
+            // The system already knows the right answer — no need for the host to judge it too.
+            if (!game.lockedAnswer) return; // host must tap which option the team gave first
+            if (game.lockedAnswer === q.correctAnswer) {
+              get().markCorrect();
+            } else {
+              get().markIncorrect();
+            }
+            return;
           }
+          // Short answer / who-am-I / etc: reveal the answer first, host judges what they heard next.
+          set({ game: { ...game, phase: 'reveal', timerRunning: false, lastAwardedPoints: undefined } });
           return;
         }
 
-        // Short answer / who-am-I / etc: reveal the answer first, host judges what they heard next.
-        set({ game: { ...game, phase: 'reveal', timerRunning: false, lastAwardedPoints: undefined } });
+        // Revealing early (question still running, or buzzers open with nobody in yet) — the
+        // host is choosing to jump straight to the answer, so nobody gets scored on this one.
+        // Clearing activeTeamId too (Classic/Rapid Fire): otherwise the reveal screen would
+        // still look like that team is awaiting a grade.
+        set({ game: { ...game, phase: 'reveal', timerRunning: false, lastAwardedPoints: undefined, buzzedTeamId: undefined, activeTeamId: undefined } });
       },
 
       markCorrect: () => {

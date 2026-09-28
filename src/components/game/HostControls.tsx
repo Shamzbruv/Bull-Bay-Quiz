@@ -69,6 +69,7 @@ export function HostControls() {
   }
 
   const action = primaryAction();
+  const showEarlyReveal = game.phase === 'question' || game.phase === 'answering';
   const teamsBehind = game.teams
     .map((t) => ({ team: t, count: game.questionsAnsweredByTeam[t.id] ?? 0 }))
     .sort((a, b) => b.count - a.count);
@@ -149,7 +150,7 @@ export function HostControls() {
           </div>
 
           <p className="text-center text-[11px] text-white/30 mt-2">
-            SPACE pause/resume · R reveal (or reset buzzers) · C correct · X incorrect · N next · team buzzer keys in Settings
+            SPACE pause/resume · R reveal answer (works any time before it's shown) · C correct · X incorrect · N next · team buzzer keys in Settings
           </p>
         </div>
       )}
@@ -183,6 +184,27 @@ export function HostControls() {
                   ✕ INCORRECT
                 </motion.button>
               </div>
+            </div>
+          ) : showEarlyReveal && action ? (
+            <div className="flex-1 flex gap-3">
+              <motion.button
+                whileTap={action.onClick ? { scale: 0.97 } : undefined}
+                onClick={action.onClick}
+                disabled={!action.onClick}
+                className="flex-[2] rounded-xl bg-gradient-to-r from-bb-blue to-bb-blue-light py-3 font-display font-bold text-white shadow-glow-blue disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {action.icon}
+                {action.label}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => revealAnswer()}
+                title="Skip ahead and show the answer now — nobody scores on an early reveal"
+                className="flex-1 rounded-xl bg-bb-gold/90 hover:bg-bb-gold text-bb-deep py-3 font-display font-bold flex items-center justify-center gap-2"
+              >
+                <Eye size={18} />
+                REVEAL
+              </motion.button>
             </div>
           ) : action ? (
             <motion.button
