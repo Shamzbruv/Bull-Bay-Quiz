@@ -4,7 +4,8 @@ import type { Quiz } from '../types/quiz';
 import type { GameHistoryEntry, GameSettings, GameState, Team } from '../types/game';
 import { buildQuestionOrder, getTieBreakerQueue } from '../lib/game/questionOrder';
 import { determineWinner } from '../lib/game/scoring';
-import { getActiveTeamId, getCurrentQuestion, isTurnBasedMode, pointsForQuestion } from '../lib/game/selectors';
+import { getActiveTeamId, getCurrentQuestion, getEffectiveGameMode, getEffectivePenalties, isTurnBasedMode, mixedSegmentModeAt, pointsForQuestion } from '../lib/game/selectors';
+import { buildMixedModeAssignment } from '../lib/game/mixedMode';
 import { getDataAdapter } from '../lib/storage';
 
 function newId(): string {
@@ -74,6 +75,7 @@ export const useGameStore = create<GameStore>()(
         const questionOrder = buildQuestionOrder(quiz, settings);
         const tieBreakerQueue = getTieBreakerQueue(quiz);
         const scores = Object.fromEntries(teams.map((t) => [t.id, 0]));
+        const mixedModeAssignment = settings.gameMode === 'mixed' ? buildMixedModeAssignment(questionOrder.length) : undefined;
 
         const game: GameState = {
           id: newId(),
@@ -90,6 +92,7 @@ export const useGameStore = create<GameStore>()(
           buzzQueue: [],
           tieBreakerQueue,
           tieBreakerActive: false,
+          mixedModeAssignment,
           startedAt: new Date().toISOString(),
           questionsAnsweredSinceBreak: 0,
           questionsAnsweredByTeam: Object.fromEntries(teams.map((t) => [t.id, 0])),
@@ -113,7 +116,7 @@ export const useGameStore = create<GameStore>()(
         const q = getCurrentQuestion(game);
         if (!q) return;
         const timeLimit = q.timeLimit ?? game.settings.questionTimeSeconds;
-        const activeTeamId = isTurnBasedMode(game.settings.gameMode) && !game.tieBreakerActive ? getActiveTeamId(game) : undefined;
+        const activeTeamId = isTurnBasedMode(getEffectiveGameMode(game)) ? getActiveTeamId(game) : undefined;
 
         set({
           game: {
@@ -238,7 +241,7 @@ export const useGameStore = create<GameStore>()(
         if (!(game.phase === 'locked' || (game.phase === 'reveal' && !game.lastAwardedPoints))) return;
         const preReveal = game.phase === 'locked';
         const teamId = game.buzzedTeamId ?? game.activeTeamId;
-        const penalty = game.settings.penaltiesEnabled && teamId ? pointsForQuestionSafe(game) : 0;
+        const penalty = getEffectivePenalties(game) && teamId ? pointsForQuestionSafe(game) : 0;
         const scores = penalty && teamId ? { ...game.scores, [teamId]: (game.scores[teamId] ?? 0) - penalty } : game.scores;
         const questionsAnsweredByTeam = teamId ? tallyAttempt(game, teamId) : game.questionsAnsweredByTeam;
 
@@ -250,7 +253,7 @@ export const useGameStore = create<GameStore>()(
 
         // Stealing only makes sense before the answer has been shown — once it's revealed
         // (the non-multiple-choice path), everyone already knows it, so no more steals.
-        const canSteal = preReveal && !isTurnBasedMode(game.settings.gameMode) && (game.tieBreakerActive || game.settings.stealEnabled) && contenders.length > 0;
+        const canSteal = preReveal && !isTurnBasedMode(getEffectiveGameMode(game)) && (game.tieBreakerActive || game.settings.stealEnabled) && contenders.length > 0;
 
         if (canSteal) {
           set({
@@ -357,6 +360,7 @@ export const useGameStore = create<GameStore>()(
         const currentQ = getCurrentQuestion(game);
         const nextQ = game.quiz.questions.find((q) => q.id === game.questionOrder[nextIndex]);
         const changedRound = nextQ?.round !== currentQ?.round;
+        const changedSegment = mixedSegmentModeAt(game, game.questionIndex) !== mixedSegmentModeAt(game, nextIndex);
         const reachedBreak = questionsAnsweredSinceBreak >= game.settings.leaderboardEveryQuestions;
 
         const cleared = {
@@ -369,7 +373,7 @@ export const useGameStore = create<GameStore>()(
 
         if (reachedBreak) {
           set({ game: { ...game, ...cleared, phase: 'leaderboard', questionIndex: nextIndex, questionsAnsweredSinceBreak: 0 } });
-        } else if (changedRound) {
+        } else if (changedRound || changedSegment) {
           set({ game: { ...game, ...cleared, phase: 'round_intro', questionIndex: nextIndex, round: nextQ?.round, questionsAnsweredSinceBreak } });
         } else {
           set({ game: { ...game, ...cleared, questionIndex: nextIndex, questionsAnsweredSinceBreak } });
@@ -381,7 +385,8 @@ export const useGameStore = create<GameStore>()(
         const game = get().game;
         if (!game) return;
         const q = getCurrentQuestion(game);
-        if (q?.round !== game.round) {
+        const changedSegment = mixedSegmentModeAt(game, game.questionIndex - 1) !== mixedSegmentModeAt(game, game.questionIndex);
+        if (q?.round !== game.round || changedSegment) {
           set({ game: { ...game, phase: 'round_intro', round: q?.round } });
         } else {
           get().startQuestion();
@@ -495,7 +500,7 @@ function onTimerExpired(get: () => GameStore, set: (partial: Partial<GameStore>)
   if (!game) return;
 
   if (game.timerKind === 'question') {
-    if (isTurnBasedMode(game.settings.gameMode) && !game.tieBreakerActive) {
+    if (isTurnBasedMode(getEffectiveGameMode(game))) {
       set({ game: { ...game, phase: 'locked', timerRunning: false, buzzedTeamId: game.activeTeamId } });
     } else {
       const answerTime = game.settings.answerTimeSeconds;

@@ -13,7 +13,10 @@ export type GamePhase =
   | 'sudden_death'
   | 'finished';
 
-export type GameMode = 'classic' | 'buzzer' | 'rapid_fire' | 'elimination';
+export type GameMode = 'classic' | 'buzzer' | 'rapid_fire' | 'elimination' | 'mixed';
+
+/** The four "real" modes mixed mode cycles through — never a resolved value on its own. */
+export type ConcreteGameMode = Exclude<GameMode, 'mixed'>;
 
 export type QuestionSelectionMode = 'all' | 'random_10' | 'random_20' | 'random_30' | 'custom';
 
@@ -109,6 +112,9 @@ export interface GameState {
   winnerTeamId?: string;
 
   questionsAnsweredSinceBreak: number;
+
+  /** Championship (mixed) mode only — which of the four real modes each questionOrder index plays under. */
+  mixedModeAssignment?: ConcreteGameMode[];
 
   /** How many questions each team has actually had graded — used for the "End Early" balancer. */
   questionsAnsweredByTeam: Record<string, number>;

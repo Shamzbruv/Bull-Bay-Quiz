@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
-import { Swords, Users, Zap, ShieldAlert } from 'lucide-react';
+import { Swords, Users, Zap, ShieldAlert, Trophy } from 'lucide-react';
 import type { GameMode, GameSettings, QuestionSelectionMode } from '../../types/game';
+import { CHAMPIONSHIP_ORDER } from '../../lib/game/mixedMode';
+import { GAME_MODE_LABEL } from '../../lib/game/gameModeLabels';
 
 interface SettingsStepProps {
   settings: GameSettings;
@@ -16,11 +18,18 @@ const SELECTIONS: { value: QuestionSelectionMode; label: string }[] = [
   { value: 'random_30', label: 'Random 30' },
 ];
 
-const MODES: { value: GameMode; label: string; description: string; icon: ReactNode }[] = [
+const MODES: { value: GameMode; label: string; description: string; icon: ReactNode; special?: boolean }[] = [
   { value: 'classic', label: 'Classic', description: 'Teams take turns answering.', icon: <Users size={18} /> },
   { value: 'buzzer', label: 'Buzzer', description: 'Any team can buzz in first.', icon: <Zap size={18} /> },
   { value: 'rapid_fire', label: 'Rapid Fire', description: 'Each team gets a fixed block of questions.', icon: <Swords size={18} /> },
   { value: 'elimination', label: 'Elimination', description: 'Incorrect answers may deduct points.', icon: <ShieldAlert size={18} /> },
+  {
+    value: 'mixed',
+    label: 'Championship',
+    description: `An equal quarter of the quiz in each mode above — ${CHAMPIONSHIP_ORDER.map((m) => GAME_MODE_LABEL[m]).join(' → ')}.`,
+    icon: <Trophy size={18} />,
+    special: true,
+  },
 ];
 
 export function SettingsStep({ settings, onChange }: SettingsStepProps) {
@@ -84,13 +93,22 @@ export function SettingsStep({ settings, onChange }: SettingsStepProps) {
               <button
                 key={mode.value}
                 onClick={() => patch({ gameMode: mode.value, penaltiesEnabled: mode.value === 'elimination' })}
-                className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
-                  active ? 'border-bb-gold bg-bb-gold/10' : 'border-white/15 bg-white/5 hover:border-bb-cyan/40'
+                className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${mode.special ? 'sm:col-span-2' : ''} ${
+                  active
+                    ? 'border-bb-gold bg-bb-gold/10 shadow-glow-gold'
+                    : mode.special
+                      ? 'border-bb-gold/30 bg-gradient-to-r from-bb-gold/5 to-transparent hover:border-bb-gold/60'
+                      : 'border-white/15 bg-white/5 hover:border-bb-cyan/40'
                 }`}
               >
-                <span className={active ? 'text-bb-gold-light mt-0.5' : 'text-white/60 mt-0.5'}>{mode.icon}</span>
+                <span className={active || mode.special ? 'text-bb-gold-light mt-0.5' : 'text-white/60 mt-0.5'}>{mode.icon}</span>
                 <span>
-                  <span className="block font-semibold">{mode.label}</span>
+                  <span className="flex items-center gap-2 font-semibold">
+                    {mode.label}
+                    {mode.special && (
+                      <span className="rounded-full bg-bb-gold/20 px-2 py-0.5 text-[10px] uppercase tracking-widest text-bb-gold-light">Special</span>
+                    )}
+                  </span>
                   <span className="block text-sm text-white/60">{mode.description}</span>
                 </span>
               </button>
@@ -99,8 +117,15 @@ export function SettingsStep({ settings, onChange }: SettingsStepProps) {
         </div>
       </Section>
 
-      {settings.gameMode === 'rapid_fire' && (
-        <Section title="Questions Per Team" subtitle="Leave on Auto to split the quiz evenly across your teams">
+      {(settings.gameMode === 'rapid_fire' || settings.gameMode === 'mixed') && (
+        <Section
+          title="Questions Per Team"
+          subtitle={
+            settings.gameMode === 'mixed'
+              ? "Applies within Championship's Rapid Fire quarter — leave on Auto to split it evenly"
+              : 'Leave on Auto to split the quiz evenly across your teams'
+          }
+        >
           <div className="flex flex-wrap gap-2 justify-center">
             <Pill active={!settings.questionsPerTeam} onClick={() => patch({ questionsPerTeam: undefined })}>
               Auto (even split)
@@ -114,8 +139,8 @@ export function SettingsStep({ settings, onChange }: SettingsStepProps) {
         </Section>
       )}
 
-      {(settings.gameMode === 'buzzer' || settings.gameMode === 'elimination') && (
-        <Section title="Steal Rule">
+      {(settings.gameMode === 'buzzer' || settings.gameMode === 'elimination' || settings.gameMode === 'mixed') && (
+        <Section title="Steal Rule" subtitle={settings.gameMode === 'mixed' ? "Applies during Championship's Buzzer and Elimination quarters" : undefined}>
           <div className="flex flex-wrap gap-2 justify-center items-center">
             <Pill active={settings.stealEnabled} onClick={() => patch({ stealEnabled: true })}>
               Allow steals

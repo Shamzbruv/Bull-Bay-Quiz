@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../state/gameStore';
-import { getCurrentQuestion } from '../../lib/game/selectors';
+import { getCurrentQuestion, getEffectiveGameMode } from '../../lib/game/selectors';
+import { GAME_MODE_LABEL, GAME_MODE_ICON } from '../../lib/game/gameModeLabels';
 import { BrandRings } from '../brand/BrandRing';
 import { MountainMotif } from '../brand/MountainMotif';
 import { soundManager } from '../../lib/sound/soundManager';
@@ -32,6 +33,8 @@ export function RoundIntro() {
   if (!game) return null;
   const question = getCurrentQuestion(game);
   const points = question?.points ?? 0;
+  const segmentMode = game.settings.gameMode === 'mixed' ? getEffectiveGameMode(game) : null;
+  const SegmentIcon = segmentMode ? GAME_MODE_ICON[segmentMode] : null;
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-center overflow-hidden">
@@ -42,6 +45,16 @@ export function RoundIntro() {
 
       <div className="relative z-10 space-y-4">
         <p className="text-white/50 uppercase tracking-[0.4em] text-sm">Bull Bay NTCOG Quiz Night</p>
+        {segmentMode && SegmentIcon && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 rounded-full border border-bb-gold/50 bg-bb-gold/10 px-4 py-1.5 text-bb-gold-light"
+          >
+            <SegmentIcon size={16} />
+            <span className="font-display font-bold uppercase tracking-widest text-sm">Now Entering: {GAME_MODE_LABEL[segmentMode]} Mode</span>
+          </motion.div>
+        )}
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-bb-cyan uppercase tracking-widest">{game.round ?? 'Next Round'}</h1>
         {points > 0 && <p className="text-bb-gold-light font-display text-xl font-bold">{points} POINT{points === 1 ? '' : 'S'} PER QUESTION</p>}
 

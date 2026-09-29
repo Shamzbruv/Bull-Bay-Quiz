@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import { useGameStore } from '../../state/gameStore';
-import { getCurrentQuestion } from '../../lib/game/selectors';
+import { getCurrentQuestion, getEffectiveGameMode } from '../../lib/game/selectors';
 import { GameHeader } from './GameHeader';
 import { TeamScoreBar } from './TeamScoreBar';
 import { ExplanationCard } from './ExplanationCard';
@@ -34,7 +34,12 @@ export function AnswerReveal() {
 
   return (
     <div className="game-safe-area tv-safe-area flex flex-col gap-6 min-h-screen py-6">
-      <GameHeader round={game.round} questionNumber={game.questionIndex + 1} totalQuestions={game.questionOrder.length} />
+      <GameHeader
+        round={game.round}
+        questionNumber={game.questionIndex + 1}
+        totalQuestions={game.questionOrder.length}
+        segmentMode={game.settings.gameMode === 'mixed' ? getEffectiveGameMode(game) : undefined}
+      />
       <TeamScoreBar teams={game.teams} scores={game.scores} highlightTeamId={award?.teamId ?? answeringTeam?.id} lastAwarded={award} />
 
       <div className="flex-1 flex items-center justify-center">

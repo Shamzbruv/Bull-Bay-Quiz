@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '../../state/gameStore';
 import { ChurchLogo } from '../brand/ChurchLogo';
 import { BrandDivider } from '../brand/BrandDivider';
+import { GAME_MODE_LABEL } from '../../lib/game/gameModeLabels';
 
 export function PreGameScreen() {
   const game = useGameStore((s) => s.game);
@@ -45,7 +46,7 @@ export function PreGameScreen() {
       </div>
 
       <p className="text-white/50 text-sm max-w-md">
-        {game.questionOrder.length} questions · {game.settings.gameMode.replace('_', ' ')} mode
+        {game.questionOrder.length} questions · {GAME_MODE_LABEL[game.settings.gameMode]} mode
       </p>
     </div>
   );

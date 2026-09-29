@@ -16,6 +16,8 @@ import { ExplanationCard } from '../components/game/ExplanationCard';
 import { Confetti } from '../components/game/Confetti';
 import { AnimatedCounter } from '../components/game/AnimatedCounter';
 import { computeStandings } from '../lib/game/scoring';
+import { getEffectiveGameMode } from '../lib/game/selectors';
+import { GAME_MODE_LABEL } from '../lib/game/gameModeLabels';
 import { brand } from '../config/brand';
 
 /**
@@ -74,6 +76,7 @@ export function GameDisplay() {
 
   const buzzedTeam = state.buzzedTeamId ? state.teams.find((t) => t.id === state.buzzedTeamId) : undefined;
   const q = state.currentQuestion;
+  const segmentMode = state.settings.gameMode === 'mixed' ? getEffectiveGameMode(state) : undefined;
   const totalTime = q?.timeLimit ?? state.settings.questionTimeSeconds;
   const timerTotal =
     state.timerKind === 'question'
@@ -108,8 +111,13 @@ export function GameDisplay() {
       )}
 
       {(state.phase === 'round_intro' || state.phase === 'sudden_death') && (
-        <div className="relative min-h-screen flex flex-col items-center justify-center text-center overflow-hidden">
+        <div className="relative min-h-screen flex flex-col items-center justify-center text-center gap-3 overflow-hidden">
           <BrandRings size={420} />
+          {state.phase === 'round_intro' && segmentMode && (
+            <span className="relative z-10 rounded-full border border-bb-gold/50 bg-bb-gold/10 px-4 py-1.5 text-bb-gold-light font-display font-bold uppercase tracking-widest text-sm">
+              Now Entering: {GAME_MODE_LABEL[segmentMode]} Mode
+            </span>
+          )}
           <h1 className="relative z-10 font-display text-3xl font-bold text-bb-cyan uppercase tracking-widest">
             {state.phase === 'sudden_death' ? 'SUDDEN DEATH' : (state.round ?? 'Next Round')}
           </h1>
@@ -118,7 +126,7 @@ export function GameDisplay() {
 
       {(state.phase === 'question' || state.phase === 'answering' || state.phase === 'locked') && q && (
         <div className="game-safe-area tv-safe-area flex flex-col gap-6 min-h-screen py-6">
-          <GameHeader round={state.round} questionNumber={q.questionNumber} totalQuestions={q.totalQuestions} />
+          <GameHeader round={state.round} questionNumber={q.questionNumber} totalQuestions={q.totalQuestions} segmentMode={segmentMode} />
           <TeamScoreBar teams={state.teams} scores={state.scores} highlightTeamId={state.buzzedTeamId ?? state.activeTeamId} />
           <div className="flex-1 flex items-center justify-center">
             <div className="w-full max-w-4xl rounded-[2rem] border border-white/10 bg-bb-navy/80 backdrop-blur-xl shadow-2xl p-6 sm:p-10 space-y-6">
@@ -161,7 +169,7 @@ export function GameDisplay() {
 
       {state.phase === 'reveal' && q && (
         <div className="game-safe-area tv-safe-area flex flex-col gap-6 min-h-screen py-6">
-          <GameHeader round={state.round} questionNumber={q.questionNumber} totalQuestions={q.totalQuestions} />
+          <GameHeader round={state.round} questionNumber={q.questionNumber} totalQuestions={q.totalQuestions} segmentMode={segmentMode} />
           <TeamScoreBar teams={state.teams} scores={state.scores} lastAwarded={state.lastAwardedPoints} />
           <div className="flex-1 flex items-center justify-center">
             <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-bb-navy/85 backdrop-blur-xl shadow-2xl p-6 sm:p-10 space-y-6 text-center">
